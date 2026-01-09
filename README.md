@@ -30,8 +30,13 @@ template:
         unique_id: battery_control_status
         state: >
           {% set lock = states('number.wr_1_battery_min_home_consumption') | float(0) %}
-          {% if lock > 100 %} Gesperrt (Laden bis 90%)
-          {% else %} Aktiv (Entladen frei)
+          {% set forced = states('input_boolean.speicher_trigger_laden') %}
+          {% if forced == 'on' %}
+            🔴 Zwangsladung / Entladung aktiv
+          {% elif lock > 100 %}
+            🟡 Gesperrt (Laden bis 90% SOC)
+          {% else %}
+            🟢 Normalbetrieb (Entladen frei)
           {% endif %}
         icon: >
           {% if states('number.wr_1_battery_min_home_consumption') | float(0) > 100 %} mdi:battery-lock
@@ -41,13 +46,14 @@ template:
       - name: "Batterie Saison Modus"
         unique_id: battery_season_mode
         state: >
-          {% set fc1 = states('sensor.sfml_prognose_morgen') | float(0) %}
-          {% if fc1 < 10 %} Winter (Erhöhter MinSoC)
-          {% else %} Sommer (Standard MinSoC)
+          {% set fc1 = states('sensor.solar_forecast_ml_energy_production_tomorrow') | float(0) %}
+          {% if fc1 < 10 %}
+            ❄️ Winter (Schlechte Prognose)
+          {% else %}
+            ☀️ Sommer (Gute Prognose)
           {% endif %}
         icon: mdi:weather-snowy-heavy
 ```
-
 ### 3. Das Dashboard (Lovelace-Konfiguration)
 Hier ist der Code für eine Vertical Stack Card, die alle Steuerungswerte, den Status und die Zwangsladung zusammenfasst.
 
