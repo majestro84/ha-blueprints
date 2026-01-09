@@ -1,0 +1,247 @@
+blueprint:
+  name: "Kostal Ultimate Control"
+  description: "Vollständige Speicher Extern Control inkl. prognosebasierter Sommer/Winter-Umschaltung und Schattenmanagement."
+  domain: automation
+  input:
+    maintenance_switch:
+      name: "Wartungsschalter (Pause)"
+      description: "Bei AN: Sofortiger Stopp aller Befehle. Bei AUS: Sofortige Wiederaufnahme."
+      selector: { entity: { domain: [input_boolean, switch] } }
+    battery_soc:
+      name: "Batterie Ladestand (SoC)"
+      selector: { entity: { domain: sensor, device_class: battery } }
+    grid_import:
+      name: "Netz-Bezug (W)"
+      selector: { entity: { domain: sensor, device_class: power } }
+    grid_export:
+      name: "Netz-Einspeisung (W)"
+      selector: { entity: { domain: sensor, device_class: power } }
+    forecast_today:
+      name: "SFML Prognose Heute (fc0)"
+      selector: { entity: { domain: sensor } }
+    forecast_tomorrow:
+      name: "SFML Prognose Morgen (fc1)"
+      selector: { entity: { domain: sensor } }
+    wallbox_status:
+      name: "Wallbox Status"
+      selector: { entity: { domain: sensor } }
+    ent_max_charge_power:
+      name: "Volatil: Max Ladeleistung (23_07)"
+      selector: { entity: { domain: number } }
+    ent_min_home_consumption:
+      name: "Persistent: Min Hausverbrauch (22_03)"
+      selector: { entity: { domain: number } }
+    ent_dc_power_abs:
+      name: "Volatil: DC Power Abs (23_05)"
+      selector: { entity: { domain: number } }
+    ent_min_soc:
+      name: "Persistent: Minimum SoC (22_04)"
+      selector: { entity: { domain: number } }
+    ent_max_soc:
+      name: "Volatil: Maximum SoC (23_09)"
+      selector: { entity: { domain: number } }
+    ent_timeout:
+      name: "Volatil: Ext. Control Timeout (23_12)"
+      selector: { entity: { domain: number } }
+    switch_shadow_string_1:
+      name: "Schattenmanagement String 1"
+      selector: { entity: { domain: switch } }
+    switch_shadow_string_2:
+      name: "Schattenmanagement String 2"
+      selector: { entity: { domain: switch } }
+    trigger_forced_charge:
+      name: "SpeicherTriggerLaden (Schalter)"
+      selector: { entity: { domain: [input_boolean, switch] } }
+    min_soc_winter:
+      name: "SpeicherMinSOC_Winter (%)"
+      default: 20
+      selector: { number: { min: 0, max: 100, unit_of_measurement: "%" } }
+    min_soc_sommer:
+      name: "SpeicherMinSOC_Sommer (%)"
+      default: 5
+      selector: { number: { min: 0, max: 100, unit_of_measurement: "%" } }
+    min_soc_fc1_limit:
+      name: "SpeicherMinSOC_fc1_Limit (kWh)"
+      default: 10
+      selector: { number: { min: 0, max: 100, unit_of_measurement: kWh } }
+    winter_release_soc:
+      name: "Winter Freigabe SoC (%)"
+      default: 90
+      selector: { number: { min: 0, max: 100, unit_of_measurement: "%" } }
+    morning_charge_limit:
+      name: "SpeicherMidday_MaxChargePowerAbs_morning (W)"
+      default: 1000
+      selector: { number: { min: 0, max: 10000, unit_of_measurement: W } }
+    midday_start_time:
+      name: "Yield_fc0_middayhigh_start"
+      default: "11:30:00"
+      selector: { time: {} }
+
+variables:
+  v_maintenance: !input maintenance_switch
+  v_forecast_today: !input forecast_today
+  v_forecast_tomorrow: !input forecast_tomorrow
+  v_wallbox_status: !input wallbox_status
+  v_battery_soc: !input battery_soc
+  v_grid_import: !input grid_import
+  v_grid_export: !input grid_export
+  v_ent_min_home_consumption: !input ent_min_home_consumption
+  v_ent_min_soc: !input ent_min_soc
+  v_ent_dc_power_abs: !input ent_dc_power_abs
+  v_forced_trigger: !input trigger_forced_charge
+  v_min_soc_winter: !input min_soc_winter
+  v_min_soc_sommer: !input min_soc_sommer
+  v_fc_limit: !input min_soc_fc1_limit
+  v_release_soc: !input winter_release_soc
+  v_morning_limit: !input morning_charge_limit
+  v_midday_start: !input midday_start_time
+
+  fc0: "{{ states(v_forecast_today) | float(0) }}"
+  fc1: "{{ states(v_forecast_tomorrow) | float(0) }}"
+  current_soc: "{{ states(v_battery_soc) | float(0) }}"
+  current_lock_val: "{{ states(v_ent_min_home_consumption) | float(0) }}"
+  current_grid: "{{ (states(v_grid_import) | float(0)) - (states(v_grid_export) | float(0)) }}"
+  wb_charging: "{{ states(v_wallbox_status) == 'Ladend' }}"
+  is_winter_mode: "{{ fc1 < v_fc_limit }}"
+
+trigger:
+  # 1. Der Heartbeat (alle 50s)
+  - platform: time_pattern
+    seconds: "/50"
+    id: "heartbeat"
+  # 2. NEU: Reagiert sofort auf Schalteränderung
+  - platform: state
+    entity_id: !input maintenance_switch
+    id: "maintenance_change"
+  # 3. Zeitbasierte Trigger
+  - platform: time
+    at: "09:00:00"
+    id: "shadow_off"
+  - platform: time
+    at: "16:00:00"
+    id: "shadow_on"
+  - platform: time
+    at: "10:01:00"
+    id: "seasonal_check"
+
+action:
+  # ABBBRUCH, wenn Wartung aktiv (Condition)
+  - condition: template
+    value_template: "{{ is_state(v_maintenance, 'off') }}"
+
+  # 1. PERSISTENTE REGISTER
+  - choose:
+      - conditions: [{ condition: trigger, id: "shadow_off" }]
+        sequence:
+          - service: switch.turn_off
+            target:
+              {
+                entity_id:
+                  [
+                    !input switch_shadow_string_1,
+                    !input switch_shadow_string_2,
+                  ],
+              }
+      - conditions: [{ condition: trigger, id: "shadow_on" }]
+        sequence:
+          - service: switch.turn_on
+            target:
+              {
+                entity_id:
+                  [
+                    !input switch_shadow_string_1,
+                    !input switch_shadow_string_2,
+                  ],
+              }
+
+  - if: [{ condition: trigger, id: "seasonal_check" }]
+    then:
+      - service: number.set_value
+        target: { entity_id: !input ent_min_soc }
+        data:
+          value: "{% if is_winter_mode %}{{ v_min_soc_winter }}{% else %}{{ v_min_soc_sommer }}{% endif %}"
+
+  - variables:
+      target_lock: >
+        {% if (fc0 < v_fc_limit and current_soc <= (states(v_ent_min_soc) | float(0))) or wb_charging %} 30000
+        {% elif current_lock_val > 100 and current_soc >= v_release_soc and not wb_charging %} 50
+        {% else %} {{ current_lock_val }}
+        {% endif %}
+  - if:
+      - condition: template
+        value_template: "{{ current_lock_val | float != target_lock | float }}"
+    then:
+      - service: number.set_value
+        target: { entity_id: !input ent_min_home_consumption }
+        data:
+          value: "{{ target_lock }}"
+
+  # 2. VOLATILE REGISTER (Wird bei Heartbeat ODER Ende der Wartung gesendet)
+  - if:
+      - condition: or
+        conditions:
+          - condition: trigger
+            id: "heartbeat"
+          - condition: trigger
+            id: "maintenance_change"
+    then:
+      - service: number.set_value
+        target: { entity_id: !input ent_timeout }
+        data: { value: 60 }
+
+      # Ladelimit
+      - if:
+          - condition: template
+            value_template: >
+              {% set start_h = v_midday_start.split(':')[0] | int %}
+              {{ not is_winter_mode and now().hour >= 8 and now().hour < start_h and fc0 > v_fc_limit }}
+        then:
+          - service: number.set_value
+            target: { entity_id: !input ent_max_charge_power }
+            data: { value: "{{ v_morning_limit }}" }
+
+      # DC Power
+      - choose:
+          - conditions:
+              [
+                {
+                  condition: template,
+                  value_template: "{{ is_state(v_forced_trigger, 'on') }}",
+                },
+              ]
+            sequence:
+              - service: number.set_value
+                target: { entity_id: !input ent_dc_power_abs }
+                data: { value: "{{ states(v_ent_dc_power_abs) | float(0) }}" }
+          - conditions:
+              [
+                {
+                  condition: template,
+                  value_template: "{{ target_lock == 30000 and current_grid > 0 }}",
+                },
+              ]
+            sequence:
+              - service: number.set_value
+                target: { entity_id: !input ent_dc_power_abs }
+                data: { value: -10 }
+
+      # Max SOC
+      - if:
+          [{ condition: template, value_template: "{{ current_soc >= 100 }}" }]
+        then:
+          - service: number.set_value
+            target: { entity_id: !input ent_max_soc }
+            data: { value: 95 }
+        else:
+          - if:
+              - condition: template
+                value_template: "{{ current_soc <= 98 }}"
+              - condition: sun
+                after: sunset
+                after_offset: "-02:00:00"
+            then:
+              - service: number.set_value
+                target: { entity_id: !input ent_max_soc }
+                data: { value: 100 }
+
+mode: restart
