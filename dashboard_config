@@ -3,10 +3,6 @@ max_columns: 3
 title: PV
 path: pv
 icon: mdi:solar-power-variant
-theme: ios-dark-mode-dark-blue
-visible:
-  - user: b3eac26636fa4e70b1c1112a1f64fa35
-  - user: 2e905e8128bb4385984135c2e59c4100
 sections:
   - type: grid
     cards:
