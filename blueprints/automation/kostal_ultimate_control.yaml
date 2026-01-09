@@ -143,7 +143,7 @@ trigger:
     id: "seasonal_check"
 
 action:
-  # Sofort-Stopp bei Wartung
+  # Sofort-Stop bei Wartung
   - condition: template
     value_template: "{{ is_state(v_maintenance, 'off') }}"
 
