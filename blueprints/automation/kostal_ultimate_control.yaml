@@ -1,6 +1,6 @@
 blueprint:
   name: "Kostal Ultimate Control"
-  description: "Vollständige Speicher Extern Control inkl. prognosebasierter Sommer/Winter-Umschaltung,Schattenmanagement und Lademanagement."
+  description: "FVollständige Speicher Extern Control inkl. prognosebasierter Sommer/Winter-Umschaltung,Schattenmanagement und Lademanagement."
   domain: automation
   input:
     # --- WARTUNGSSCHALTER ---
@@ -90,7 +90,6 @@ blueprint:
       selector: { time: {} }
 
 variables:
-  # Mapping der Inputs auf Variablen (WICHTIG!)
   v_maintenance: !input maintenance_switch
   v_shadow_sensor: !input shadow_sensor
   v_forced_trigger: !input trigger_forced_charge
@@ -112,7 +111,6 @@ variables:
   v_morning_limit: !input morning_charge_limit
   v_midday_start: !input midday_start_time
 
-  # Berechnungen basierend auf Variablen
   fc0: "{{ states(v_forecast_today) | float(0) }}"
   fc1: "{{ states(v_forecast_tomorrow) | float(0) }}"
   current_soc: "{{ states(v_battery_soc) | float(0) }}"
@@ -143,7 +141,7 @@ trigger:
     id: "seasonal_check"
 
 action:
-  # Sofort-Stop bei Wartung
+  # Sofort-Stopp bei Wartung
   - condition: template
     value_template: "{{ is_state(v_maintenance, 'off') }}"
 
@@ -201,6 +199,7 @@ action:
           - condition: trigger
             id: "maintenance_change"
     then:
+      # Heartbeat senden
       - service: number.set_value
         target: { entity_id: !input ent_timeout }
         data: { value: 60 }
@@ -217,32 +216,15 @@ action:
             data:
               value: "{{ v_morning_limit }}"
 
-      # DC Power
-      - choose:
-          - conditions:
-              [
-                {
-                  condition: template,
-                  value_template: "{{ is_state(v_forced_trigger, 'on') }}",
-                },
-              ]
-            sequence:
-              - service: number.set_value
-                target: { entity_id: !input ent_dc_power_abs }
-                data:
-                  value: "{{ states(v_ent_dc_power_abs) | float(0) }}"
-          - conditions:
-              [
-                {
-                  condition: template,
-                  value_template: "{{ target_lock | float == 30000 and current_grid | float > 0 }}",
-                },
-              ]
-            sequence:
-              - service: number.set_value
-                target: { entity_id: !input ent_dc_power_abs }
-                data:
-                  value: -10
+      # DC Power (Nur Zwangsladen)
+      - if:
+          - condition: template
+            value_template: "{{ is_state(v_forced_trigger, 'on') }}"
+        then:
+          - service: number.set_value
+            target: { entity_id: !input ent_dc_power_abs }
+            data:
+              value: "{{ states(v_ent_dc_power_abs) | float(0) }}"
 
       # Max SOC
       - if:
