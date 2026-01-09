@@ -1,6 +1,6 @@
 blueprint:
   name: "Kostal Ultimate Control"
-  description: "Vollständige Speicher Extern Control inkl. prognosebasierter Sommer/Winter-Umschaltung und Schattenmanagement."
+  description: "Vollständige Speicher Extern Control inkl. prognosebasierter Sommer/Winter-Umschaltung,Schattenmanagement und Lademanagement."
   domain: automation
   input:
     # --- WARTUNGSSCHALTER ---
@@ -9,6 +9,10 @@ blueprint:
       selector: { entity: { domain: [input_boolean, switch] } }
 
     # --- SENSOREN ---
+    shadow_sensor:
+      name: "SFML Schatten-Sensor"
+      description: "Sensor von SFML (binary_sensor.solar_forecast_ml_shadow_detection_string_X)"
+      selector: { entity: { domain: [sensor, binary_sensor] } }
     battery_soc:
       name: "Batterie Ladestand (SoC)"
       selector: { entity: { domain: sensor, device_class: battery } }
@@ -86,13 +90,13 @@ blueprint:
       selector: { time: {} }
 
 variables:
-  # ALLE Inputs hier global für Jinja verfügbar machen
+  # Mapping der Inputs auf Variablen (WICHTIG!)
   v_maintenance: !input maintenance_switch
+  v_shadow_sensor: !input shadow_sensor
   v_forced_trigger: !input trigger_forced_charge
   v_ent_dc_power_abs: !input ent_dc_power_abs
   v_ent_min_home_consumption: !input ent_min_home_consumption
   v_ent_min_soc: !input ent_min_soc
-  v_ent_max_charge_power: !input ent_max_charge_power
   v_ent_max_soc: !input ent_max_soc
   v_ent_timeout: !input ent_timeout
   v_battery_soc: !input battery_soc
@@ -108,7 +112,7 @@ variables:
   v_morning_limit: !input morning_charge_limit
   v_midday_start: !input midday_start_time
 
-  # Berechnungen
+  # Berechnungen basierend auf Variablen
   fc0: "{{ states(v_forecast_today) | float(0) }}"
   fc1: "{{ states(v_forecast_tomorrow) | float(0) }}"
   current_soc: "{{ states(v_battery_soc) | float(0) }}"
@@ -116,7 +120,7 @@ variables:
   current_grid: "{{ (states(v_grid_import) | float(0)) - (states(v_grid_export) | float(0)) }}"
   wb_charging: "{{ states(v_wallbox_status) == 'Ladend' }}"
   is_winter_mode: "{{ fc1 < v_fc_limit }}"
-  # Sticky Logik Berechnung für target_lock
+
   target_lock: >
     {% set min_soc_val = states(v_ent_min_soc) | float(0) %}
     {% if (fc0 < v_fc_limit and current_soc <= min_soc_val) or wb_charging %} 30000
@@ -131,12 +135,9 @@ trigger:
   - platform: state
     entity_id: !input maintenance_switch
     id: "maintenance_change"
-  - platform: time
-    at: "09:00:00"
-    id: "shadow_off"
-  - platform: time
-    at: "16:00:00"
-    id: "shadow_on"
+  - platform: state
+    entity_id: !input shadow_sensor
+    id: "shadow_event"
   - platform: time
     at: "10:01:00"
     id: "seasonal_check"
@@ -146,27 +147,32 @@ action:
   - condition: template
     value_template: "{{ is_state(v_maintenance, 'off') }}"
 
-  # 1. PERSISTENTE WERTE
-  - choose:
-      - conditions:
-          - condition: trigger
-            id: "shadow_off"
-        sequence:
-          - service: switch.turn_off
-            target:
-              entity_id:
-                - !input switch_shadow_string_1
-                - !input switch_shadow_string_2
-      - conditions:
-          - condition: trigger
-            id: "shadow_on"
-        sequence:
-          - service: switch.turn_on
-            target:
-              entity_id:
-                - !input switch_shadow_string_1
-                - !input switch_shadow_string_2
+  # --- 1. SCHATTENMANAGEMENT ---
+  - if:
+      - condition: trigger
+        id: "shadow_event"
+    then:
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ is_state(v_shadow_sensor, 'on') }}"
+            sequence:
+              - service: switch.turn_on
+                target:
+                  entity_id:
+                    - !input switch_shadow_string_1
+                    - !input switch_shadow_string_2
+          - conditions:
+              - condition: template
+                value_template: "{{ is_state(v_shadow_sensor, 'off') }}"
+            sequence:
+              - service: switch.turn_off
+                target:
+                  entity_id:
+                    - !input switch_shadow_string_1
+                    - !input switch_shadow_string_2
 
+  # --- 2. SEASONAL MIN-SOC ---
   - if:
       - condition: trigger
         id: "seasonal_check"
@@ -174,9 +180,9 @@ action:
       - service: number.set_value
         target: { entity_id: !input ent_min_soc }
         data:
-          value: "{% if is_winter_mode %}{{ v_min_soc_winter }}{% else %}{{ v_min_soc_sommer }}{% endif %}"
+          value: "{% if fc1 < v_fc_limit %}{{ v_min_soc_winter }}{% else %}{{ v_min_soc_sommer }}{% endif %}"
 
-  # Entladesperre (Persistent)
+  # --- 3. ENTLADESPERRE ---
   - if:
       - condition: template
         value_template: "{{ current_lock_val | float != target_lock | float }}"
@@ -186,7 +192,7 @@ action:
         data:
           value: "{{ target_lock }}"
 
-  # 2. VOLATILE REGISTER (Heartbeat-Block)
+  # --- 4. VOLATILE REGISTER (Heartbeat-Block) ---
   - if:
       - condition: or
         conditions:
@@ -195,13 +201,11 @@ action:
           - condition: trigger
             id: "maintenance_change"
     then:
-      # Heartbeat senden
       - service: number.set_value
         target: { entity_id: !input ent_timeout }
-        data:
-          value: 60
+        data: { value: 60 }
 
-      # Ladelimit (Midday Control)
+      # Ladelimit
       - if:
           - condition: template
             value_template: >
@@ -213,34 +217,40 @@ action:
             data:
               value: "{{ v_morning_limit }}"
 
-      # DC Power (Zwangsladen oder Standby-Schutz)
+      # DC Power
       - choose:
           - conditions:
-              - condition: template
-                value_template: "{{ is_state(v_forced_trigger, 'on') }}"
+              [
+                {
+                  condition: template,
+                  value_template: "{{ is_state(v_forced_trigger, 'on') }}",
+                },
+              ]
             sequence:
               - service: number.set_value
                 target: { entity_id: !input ent_dc_power_abs }
                 data:
                   value: "{{ states(v_ent_dc_power_abs) | float(0) }}"
           - conditions:
-              - condition: template
-                value_template: "{{ target_lock | float == 30000 and current_grid | float > 0 }}"
+              [
+                {
+                  condition: template,
+                  value_template: "{{ target_lock | float == 30000 and current_grid | float > 0 }}",
+                },
+              ]
             sequence:
               - service: number.set_value
                 target: { entity_id: !input ent_dc_power_abs }
                 data:
                   value: -10
 
-      # Max SOC (100 -> 95 Logik)
+      # Max SOC
       - if:
-          - condition: template
-            value_template: "{{ current_soc >= 100 }}"
+          [{ condition: template, value_template: "{{ current_soc >= 100 }}" }]
         then:
           - service: number.set_value
             target: { entity_id: !input ent_max_soc }
-            data:
-              value: 95
+            data: { value: 95 }
         else:
           - if:
               - condition: template
@@ -251,7 +261,6 @@ action:
             then:
               - service: number.set_value
                 target: { entity_id: !input ent_max_soc }
-                data:
-                  value: 100
+                data: { value: 100 }
 
 mode: restart
