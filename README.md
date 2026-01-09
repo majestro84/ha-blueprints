@@ -7,25 +7,18 @@ Many thanks to Christian for his excellent work on the FHEM project.**
 
 ## Additional Config 
 
-1. Der "Wartungs-Schalter" (Maintenance Switch)
+### 1. Der "Wartungs-Schalter" (Maintenance Switch)
 Damit du die Automatisierung jederzeit pausieren kannst, ohne sie im Backend suchen zu müssen:
 
 Gehe zu Einstellungen > Geräte & Dienste > Helfer.
 
 Erstelle einen neuen Helfer: Schalter (Toggle).
-
+```
 Name: Batterie Steuerung Wartung
 
 Entity-ID: input_boolean.battery_control_maintenance
-
-Integration in den Blueprint: Du musst in deiner Automatisierung (die aus dem Blueprint erstellt wurde) unter Bedingungen (Conditions) folgendes hinzufügen:
-
-```yaml
-condition: state
-entity_id: input_boolean.battery_control_maintenance
-state: "off"
 ```
-Bedeutung: Die Automatisierung läuft nur, wenn der Wartungsschalter AUS ist.
+Die Automatisierung läuft nur, wenn der Wartungsschalter AUS ist.
 
 2. Status-Sensoren (Winter, Sperre, Drossel)
 Die Logik "Winter-Mode" oder "Drosselung" findet bisher nur im Kopf der Automatisierung statt. Damit wir sie im Dashboard sehen, legen wir Template-Sensoren in deiner configuration.yaml (oder über die UI bei Helfern > Template) an:
