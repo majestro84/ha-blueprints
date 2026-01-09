@@ -63,47 +63,50 @@ Kopiere diesen YAML-Code in dein Dashboard (Karte hinzufügen > Manuell):
 ```yaml
 type: vertical-stack
 cards:
-  # Teil 1: Hauptschalter & Status
   - type: entities
+    title: 🔋 Kostal Speicher Steuerung
+    show_header_toggle: false
     entities:
       - entity: input_boolean.battery_control_maintenance
-        name: "Wartungsmodus (Pause)"
+        name: Wartungsmodus (Pause)
+        icon: mdi:alert-octagon
+      - type: divider
       - entity: sensor.batterie_ladestatus_logik
-        name: "Status Entladesperre"
+        name: Aktueller Status
       - entity: sensor.batterie_saison_modus
-        name: "Aktueller Modus"
-
-  # Teil 2: Aktive Steuerungswerte (Register 23_xx & 22_xx)
+        name: Prognose-Saison
+      - entity: number.wr_1_battery_min_soc
+        name: Gesetzter Min-SoC
   - type: entities
-    title: "Aktuelle WR-Parameter"
+    title: ⚡ Manuelle Befehle (CMD 17)
+    show_header_toggle: false
+    entities:
+      - entity: input_boolean.trigger_forced_charge
+        name: Zwangsladen/-entladen
+      - entity: number.wr_1_dc_power_abs
+        name: DC Leistung (Vorgabe in W)
+        secondary_info: last-changed
+  - type: entities
+    title: 🔍 Register Monitoring (Live)
     show_header_toggle: false
     entities:
       - entity: number.wr_1_battery_min_home_consumption
-        name: "Entladesperre (30k=AN / 50=AUS)"
+        name: Entladesperre (30k = Sperre)
       - entity: number.wr_1_battery_max_charge_power
-        name: "Max. Ladeleistung (Drossel)"
-      - entity: number.wr_1_dc_power_abs
-        name: "DC-Leistung (Zwangsladen)"
-      - entity: number.wr_1_battery_min_soc
-        name: "Aktueller Min-SoC"
-
-  # Teil 3: Manuelle Steuerung (CMD 17)
-  - type: entities
-    title: "Manuelle Befehle"
-    entities:
-      - entity: input_boolean.speicher_trigger_laden
-        name: "Zwangsladen aktivieren"
-      - type: attribute
-        entity: number.wr_1_dc_power_abs
-        attribute: min
-        name: "DC Min/Max Bereich"
-
-  # Teil 4: Schattenmanagement (String-Switches)
+        name: Ladedrossel (1000W = Aktiv)
+      - entity: number.wr_1_battery_max_soc
+        name: Max-SoC (Register 23_09)
+      - entity: sensor.active_power
+        name: Netz-Bezug
+      - entity: sensor.active_power_2
+        name: Netz-Einspeisung
   - type: glance
-    title: "Schattenmanagement"
+    title: 🌗 Schattenmanagement
     entities:
       - entity: switch.wr_1_shadow_management_dc_string_1
-        name: "String 1"
+        name: String 1
       - entity: switch.wr_1_shadow_management_dc_string_2
-        name: "String 2"
+        name: String 2
+grid_options:
+  columns: full
 ```
