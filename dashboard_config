@@ -1,0 +1,53 @@
+type: sections
+max_columns: 3
+title: PV
+path: pv
+icon: mdi:solar-power-variant
+theme: ios-dark-mode-dark-blue
+visible:
+  - user: b3eac26636fa4e70b1c1112a1f64fa35
+  - user: 2e905e8128bb4385984135c2e59c4100
+sections:
+  - type: grid
+    cards:
+      - type: vertical-stack
+        cards:
+          - type: entities
+            entities:
+              - entity: input_boolean.battery_control_maintenance
+                name: Wartungsmodus (Pause)
+                icon: mdi:hammer-wrench
+              - entity: sensor.batterie_ladestatus_logik
+                name: Aktueller Status
+              - entity: sensor.batterie_saison_modus
+                name: Prognose-Modus
+          - type: entities
+            title: Manuelle Steuerung
+            show_header_toggle: false
+            entities:
+              - entity: input_boolean.trigger_forced_charge
+                name: Zwangsladen aktivieren
+              - entity: number.wr_1_dc_power_abs
+                name: DC Leistung (Vorgabe W)
+          - type: entities
+            title: Live WR-Register
+            show_header_toggle: false
+            entities:
+              - entity: number.wr_1_battery_min_home_consumption
+                name: Entladesperre (30k=AN)
+              - entity: number.wr_1_battery_max_charge_power
+                name: Ladedrosselung (W)
+              - entity: number.wr_1_battery_min_soc
+                name: Aktueller Min-SoC (%)
+              - entity: number.wr_1_battery_max_soc
+                name: Max-SoC Limit (%)
+          - type: glance
+            title: Schattenmanagement
+            entities:
+              - entity: switch.wr_1_shadow_management_dc_string_1
+                name: String 1
+              - entity: switch.wr_1_shadow_management_dc_string_2
+                name: String 2
+        grid_options:
+          columns: full
+    column_span: 3
