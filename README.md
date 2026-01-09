@@ -5,7 +5,7 @@
 **Inspired by the FHEM automation Kostal Plenticore 10 Plus by Christian (ch.eick).
 Many thanks to Christian for his excellent work on the FHEM project.**
 
-Config 
+##Additional Config 
 
 1. Der "Wartungs-Schalter" (Maintenance Switch)
 Damit du die Automatisierung jederzeit pausieren kannst, ohne sie im Backend suchen zu müssen:
