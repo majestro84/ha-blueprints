@@ -85,7 +85,7 @@ cards:
     show_header_toggle: false
     entities:
       - entity: input_boolean.trigger_forced_charge
-        name: Zwangsladen/-entladen
+        name: Zwangsladen
       - entity: number.wr_1_dc_power_abs
         name: DC Leistung (negative Werte)
         secondary_info: last-changed
