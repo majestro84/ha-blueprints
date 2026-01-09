@@ -17,18 +17,17 @@ Entity-ID: input_boolean.battery_control_maintenance
 
 Integration in den Blueprint: Du musst in deiner Automatisierung (die aus dem Blueprint erstellt wurde) unter Bedingungen (Conditions) folgendes hinzufügen:
 
-YAML
-
+```yaml
 condition: state
 entity_id: input_boolean.battery_control_maintenance
 state: "off"
+```
 Bedeutung: Die Automatisierung läuft nur, wenn der Wartungsschalter AUS ist.
 
 2. Status-Sensoren (Winter, Sperre, Drossel)
 Die Logik "Winter-Mode" oder "Drosselung" findet bisher nur im Kopf der Automatisierung statt. Damit wir sie im Dashboard sehen, legen wir Template-Sensoren in deiner configuration.yaml (oder über die UI bei Helfern > Template) an:
 
-YAML
-
+```yaml
 template:
   - sensor:
       - name: "Batterie Ladestatus Logik"
@@ -51,18 +50,16 @@ template:
           {% else %} Sommer (Standard MinSoC)
           {% endif %}
         icon: mdi:weather-snowy-heavy
+```
+
 3. Das Dashboard (Lovelace-Konfiguration)
 Hier ist der Code für eine Vertical Stack Card, die alle Steuerungswerte, den Status und die Zwangsladung zusammenfasst.
 
 Kopiere diesen YAML-Code in dein Dashboard (Karte hinzufügen > Manuell):
 
-YAML
-
+```yaml
 type: vertical-stack
 cards:
-  - type: header
-    title: "🔋 Kostal Speicher-Steuerung"
-  
   # Teil 1: Hauptschalter & Status
   - type: entities
     entities:
@@ -106,3 +103,4 @@ cards:
         name: "String 1"
       - entity: switch.wr_1_shadow_management_dc_string_2
         name: "String 2"
+```
