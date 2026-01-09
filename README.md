@@ -71,13 +71,13 @@ cards:
       - entity: number.wr_1_battery_min_soc
         name: Gesetzter Min-SoC
   - type: entities
-    title: ⚡ Manuelle Befehle (CMD 17)
+    title: ⚡ Manuelle Befehle
     show_header_toggle: false
     entities:
       - entity: input_boolean.trigger_forced_charge
         name: Zwangsladen/-entladen
       - entity: number.wr_1_dc_power_abs
-        name: DC Leistung (Vorgabe in W)
+        name: DC Leistung (negative Werte)
         secondary_info: last-changed
   - type: entities
     title: 🔍 Register Monitoring (Live)
@@ -93,6 +93,8 @@ cards:
         name: Netz-Bezug
       - entity: sensor.active_power_2
         name: Netz-Einspeisung
+      - entity: sensor.sum_output_inverter_ac
+        name: PV-Erzeugung AC
   - type: glance
     title: 🌗 Schattenmanagement
     entities:
