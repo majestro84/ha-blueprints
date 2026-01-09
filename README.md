@@ -1,10 +1,9 @@
-# ha-blueprints
-Home Assistant Blueprints
+# Home Assistant Blueprints
 
-Kostal Battery external Control.
+## Kostal Battery external Control.
 
-Inspired by the FHEM automation Kostal Plenticore 10 Plus by Christian (ch.eick).
-Many thanks to Christian for his excellent work on the FHEM project.
+**Inspired by the FHEM automation Kostal Plenticore 10 Plus by Christian (ch.eick).
+Many thanks to Christian for his excellent work on the FHEM project.**
 
 Config 
 
