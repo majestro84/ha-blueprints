@@ -9,7 +9,7 @@ Many thanks to Christian for his excellent work on the FHEM project.**
 ## Additional rewuired Intergration
 [Core Integration Kostal](https://www.home-assistant.io/integrations/kostal_plenticore)\
 [Kostal Smartmeter](https://github.com/MeisterTR/ha-kostal-smartmeter)\
-[Solar Forecast ML](https://github.com/Zara-Toorox/ha-solar-forecast-ml)\
+[Solar Forecast ML](https://github.com/Zara-Toorox/ha-solar-forecast-ml)
 
 ### 1. Der "Wartungs-Schalter" (Maintenance Switch)
 Damit du die Automatisierung jederzeit pausieren kannst, ohne sie im Backend suchen zu müssen:
