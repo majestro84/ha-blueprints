@@ -20,7 +20,7 @@ Entity-ID: input_boolean.battery_control_maintenance
 ```
 Die Automatisierung läuft nur, wenn der Wartungsschalter AUS ist.
 
-2. Status-Sensoren (Winter, Sperre, Drossel)
+### 2. Status-Sensoren (Winter, Sperre, Drossel)
 Die Logik "Winter-Mode" oder "Drosselung" findet bisher nur im Kopf der Automatisierung statt. Damit wir sie im Dashboard sehen, legen wir Template-Sensoren in deiner configuration.yaml (oder über die UI bei Helfern > Template) an:
 
 ```yaml
@@ -48,7 +48,7 @@ template:
         icon: mdi:weather-snowy-heavy
 ```
 
-3. Das Dashboard (Lovelace-Konfiguration)
+### 3. Das Dashboard (Lovelace-Konfiguration)
 Hier ist der Code für eine Vertical Stack Card, die alle Steuerungswerte, den Status und die Zwangsladung zusammenfasst.
 
 Kopiere diesen YAML-Code in dein Dashboard (Karte hinzufügen > Manuell):
