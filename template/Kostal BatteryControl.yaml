@@ -1,0 +1,28 @@
+sensor:
+  - name: "Batterie Ladestatus Logik"
+    unique_id: battery_control_status
+    state: >
+      {% set lock = states('number.wr_1_battery_min_home_consumption') | float(0) %}
+      {% set forced = states('input_boolean.speicher_trigger_laden') %}
+      {% if forced == 'on' %}
+        🔴 Zwangsladung / Entladung aktiv
+      {% elif lock > 100 %}
+        🟡 Gesperrt (Laden bis 90% SOC)
+      {% else %}
+        🟢 Normalbetrieb (Entladen frei)
+      {% endif %}
+    icon: >
+      {% if states('number.wr_1_battery_min_home_consumption') | float(0) > 100 %} mdi:battery-lock
+      {% else %} mdi:battery-check
+      {% endif %}
+
+  - name: "Batterie Saison Modus"
+    unique_id: battery_season_mode
+    state: >
+      {% set fc1 = states('sensor.solar_forecast_ml_energy_production_tomorrow') | float(0) %}
+      {% if fc1 < 10 %}
+        ❄️ Winter (Schlechte Prognose)
+      {% else %}
+        ☀️ Sommer (Gute Prognose)
+      {% endif %}
+    icon: mdi:weather-snowy-heavy
