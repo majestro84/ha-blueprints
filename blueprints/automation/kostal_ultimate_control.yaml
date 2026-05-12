@@ -28,6 +28,9 @@ blueprint:
     forecast_tomorrow:
       name: "SFML Prognose Morgen (fc1)"
       selector: { entity: { domain: sensor } }
+    season:
+      name: "Jahreszeiten"
+      selector: { entity: { domain: sensor, device_class: enum } }
     wallbox_status:
       name: "Wallbox Status"
       selector: { entity: { domain: sensor } }
@@ -101,6 +104,7 @@ variables:
   v_battery_soc: !input battery_soc
   v_forecast_today: !input forecast_today
   v_forecast_tomorrow: !input forecast_tomorrow
+  v_season: !input season
   v_grid_import: !input grid_import
   v_grid_export: !input grid_export
   v_wallbox_status: !input wallbox_status
@@ -117,11 +121,11 @@ variables:
   current_lock_val: "{{ states(v_ent_min_home_consumption) | float(0) }}"
   current_grid: "{{ (states(v_grid_import) | float(0)) - (states(v_grid_export) | float(0)) }}"
   wb_charging: "{{ states(v_wallbox_status) == 'Ladend' }}"
-  is_winter_mode: "{{ fc1 < v_fc_limit }}"
+  is_winter_mode: "{{ fc1 < v_fc_limit and is_state(v_season, 'winter') }}"
 
   target_lock: >
     {% set min_soc_val = states(v_ent_min_soc) | float(0) %}
-    {% if (fc0 < v_fc_limit and current_soc <= min_soc_val) or wb_charging %} 30000
+    {% if (fc0 < v_fc_limit and current_soc <= min_soc_val and is_state(v_season, 'winter')) or wb_charging %} 30000
     {% elif current_lock_val > 100 and current_soc >= v_release_soc and not wb_charging %} 50
     {% else %} {{ current_lock_val }}
     {% endif %}
@@ -178,7 +182,7 @@ action:
       - service: number.set_value
         target: { entity_id: !input ent_min_soc }
         data:
-          value: "{% if fc1 < v_fc_limit %}{{ v_min_soc_winter }}{% else %}{{ v_min_soc_sommer }}{% endif %}"
+          value: "{% if fc1 < v_fc_limit and is_state(v_season, 'winter') %}{{ v_min_soc_winter }}{% else %}{{ v_min_soc_sommer }}{% endif %}"
 
   # --- 3. ENTLADESPERRE ---
   - if:
