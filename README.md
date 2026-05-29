@@ -130,9 +130,9 @@ Um die Automation zu Debuggen in den Entwicklerwerkzeugen - Template in HA hier 
 {% set current_season = states("sensor.season") %}
 {% set is_winter = current_season == 'winter' %}
 
-{% set v_midday_start = "11:30" %} {# Falls das ein Sensor ist, hier mit states() abfragen! #}
+{% set v_midday_start = "11:30" %}
 {% set start_h = v_midday_start.split(':')[0] | int %}
-{% set is_winter_mode = is_winter %} {# Je nachdem, wie du 'is_winter_mode' definiert hast #}
+{% set is_winter_mode = is_winter %}
 
 {% set zeit_bedingung_erfuellt = not is_winter_mode and now().hour >= 8 and now().hour < start_h and fc0 > v_fc_limit %}
 
