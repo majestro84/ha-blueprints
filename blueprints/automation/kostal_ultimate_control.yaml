@@ -1,6 +1,6 @@
 blueprint:
   name: "Kostal Ultimate Control"
-  description: "FVollständige Speicher Extern Control inkl. prognosebasierter Sommer/Winter-Umschaltung,Schattenmanagement und Lademanagement."
+  description: "Vollständige Speicher Extern Control inkl. prognosebasierter Sommer/Winter-Umschaltung,Schattenmanagement und Lademanagement."
   domain: automation
   input:
     # --- WARTUNGSSCHALTER ---
@@ -127,6 +127,7 @@ variables:
     {% set min_soc_val = states(v_ent_min_soc) | float(0) %}
     {% if (fc0 < v_fc_limit and current_soc <= min_soc_val and is_state(v_season, 'winter')) or wb_charging %} 30000
     {% elif current_lock_val > 100 and current_soc >= v_release_soc and not wb_charging %} 50
+    {% elif current_lock_val > 100 and not wb_charging and not (fc0 < v_fc_limit and current_soc <= min_soc_val and is_winter) %} 50
     {% else %} {{ current_lock_val }}
     {% endif %}
 
@@ -182,7 +183,7 @@ action:
       - service: number.set_value
         target: { entity_id: !input ent_min_soc }
         data:
-          value: "{% if fc1 < v_fc_limit and is_state(v_season, 'winter') %}{{ v_min_soc_winter }}{% else %}{{ v_min_soc_sommer }}{% endif %}"
+          value: "{% if fc1 < v_fc_limit %}{{ v_min_soc_winter }}{% else %}{{ v_min_soc_sommer }}{% endif %}"
 
   # --- 3. ENTLADESPERRE ---
   - if:
