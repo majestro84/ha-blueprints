@@ -115,3 +115,50 @@ cards:
 grid_options:
   columns: full
 ```
+
+###4 Debug
+Um die Automation zu Debuggen in den Entwicklerwerkzeugen - Template in HA hier eine Beispiel zum Sperren der Entladung des Speichers.
+
+```yaml
+{% set v_release_soc = 90 %}
+{% set min_soc_val = states("number.wr_1_battery_min_soc") | float(0) %}
+{% set fc0 = states("sensor.none_prognose_heute") | float(0) %}
+{% set v_fc_limit = 10 %}
+{% set current_lock_val = states("number.wr_1_battery_min_home_consumption") | float(0) %}
+{% set wb_charging = states("sensor.enector_status") == 'Ladend' %}
+{% set current_soc = states("sensor.wr_1_battery_soc") | float(0) %}
+{% set current_season = states("sensor.season") %}
+{% set is_winter = current_season == 'winter' %}
+
+{% set v_midday_start = "11:30" %} {# Falls das ein Sensor ist, hier mit states() abfragen! #}
+{% set start_h = v_midday_start.split(':')[0] | int %}
+{% set is_winter_mode = is_winter %} {# Je nachdem, wie du 'is_winter_mode' definiert hast #}
+
+# Die Auswertung der Zeit-Bedingung als eigene Variable für den Debugger
+{% set zeit_bedingung_erfuellt = not is_winter_mode and now().hour >= 8 and now().hour < start_h and fc0 > v_fc_limit %}
+
+target_lock: >
+    {% if (fc0 < v_fc_limit and current_soc <= min_soc_val and is_winter) or wb_charging %} 30000
+    {% elif current_lock_val > 100 and current_soc >= v_release_soc and not wb_charging %} 50
+    {% elif current_lock_val > 100 and not wb_charging and not (fc0 < v_fc_limit and current_soc <= min_soc_val and is_winter) %} 50
+    {% else %} {{ current_lock_val }}
+    {% endif %}
+
+---
+### DIAGNOSE DER VARIABLEN:
+* **Release SoC:** {{ v_release_soc }} %
+* **Aktueller Batterie SoC (current_soc):** {{ current_soc }} %
+* **Minimaler SoC (min_soc_val):** {{ min_soc_val }} %
+* **Prognose Heute (fc0):** {{ fc0 }} kWh (Limit ist {{ v_fc_limit }})
+* **Wallbox lädt? (wb_charging):** {{ wb_charging }} (Aktueller Status: '{{ states("sensor.enector_status") }}')
+* **Aktueller Lock-Wert (current_lock_val):** {{ current_lock_val }} W
+* **Ist Winter? (is_winter):** {{ is_winter }}
+* **Jahreszeit:** {{ current_season }}
+
+* **Mittag Startzeit (v_midday_start):** {{ v_midday_start }} (Stunde extrahiert: {{ start_h }} Uhr)
+* **Aktuelle Uhrzeit (Stunde):** {{ now().hour }} Uhr
+* **Bedingung 1 (Kein Winter):** {{ not is_winter_mode }}
+* **Bedingung 2 (Zwischen 8 und {{ start_h }} Uhr):** {{ now().hour >= 8 and now().hour < start_h }}
+* **Bedingung 3 (Prognose {{ fc0 }} > Limit {{ v_fc_limit }}):** {{ fc0 > v_fc_limit }}
+* **GESAMTERGEBNIS ZEIT-BEDINGUNG:** **{{ zeit_bedingung_erfuellt }}**
+```
