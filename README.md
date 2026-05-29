@@ -134,7 +134,6 @@ Um die Automation zu Debuggen in den Entwicklerwerkzeugen - Template in HA hier 
 {% set start_h = v_midday_start.split(':')[0] | int %}
 {% set is_winter_mode = is_winter %} {# Je nachdem, wie du 'is_winter_mode' definiert hast #}
 
-# Die Auswertung der Zeit-Bedingung als eigene Variable für den Debugger
 {% set zeit_bedingung_erfuellt = not is_winter_mode and now().hour >= 8 and now().hour < start_h and fc0 > v_fc_limit %}
 
 target_lock: >
