@@ -183,7 +183,7 @@ action:
       - service: number.set_value
         target: { entity_id: !input ent_min_soc }
         data:
-          value: "{% if fc1 < v_fc_limit %}{{ v_min_soc_winter }}{% else %}{{ v_min_soc_sommer }}{% endif %}"
+          value: "{% if fc1 < v_fc_limit and is_state(v_season, 'winter') %}{{ v_min_soc_winter }}{% else %}{{ v_min_soc_sommer }}{% endif %}"
 
   # --- 3. ENTLADESPERRE ---
   - if:
